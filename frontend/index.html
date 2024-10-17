@@ -1,0 +1,126 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helmet Detection Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .count {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .chart-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Helmet Detection Dashboard</h1>
+        <div class="dashboard">
+            <div class="card">
+                <h2>Total Helmets Detected</h2>
+                <div id="helmetCount" class="count">0</div>
+            </div>
+            <div class="card">
+                <h2>Total No Helmets Detected</h2>
+                <div id="noHelmetCount" class="count">0</div>
+            </div>
+        </div>
+        <div class="chart-container">
+            <canvas id="detectionChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let chart;
+
+        // สร้างกราฟ
+        function createChart(labels, helmetData, noHelmetData) {
+            const ctx = document.getElementById('detectionChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Helmets',
+                        data: helmetData,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }, {
+                        label: 'No Helmets',
+                        data: noHelmetData,
+                        borderColor: 'rgb(255, 99, 132)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // อัพเดทข้อมูลแบบเรียลไทม์
+        async function updateData() {
+            try {
+                const response = await fetch('http://localhost:8000/counts/');
+                const data = await response.json();
+                
+                // อัพเดทจำนวนล่าสุด
+                const latest = data[data.length - 1];
+                document.getElementById('helmetCount').textContent = latest.helmet_count;
+                document.getElementById('noHelmetCount').textContent = latest.no_helmet_count;
+
+                // อัพเดทกราฟ
+                const labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
+                const helmetData = data.map(d => d.helmet_count);
+                const noHelmetData = data.map(d => d.no_helmet_count);
+
+                if (chart) {
+                    chart.destroy();
+                }
+                createChart(labels, helmetData, noHelmetData);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // อัพเดทข้อมูลทุก 5 วินาที
+        setInterval(updateData, 5000);
+        updateData(); // โหลดข้อมูลครั้งแรก
+    </script>
+</body>
+</html>
